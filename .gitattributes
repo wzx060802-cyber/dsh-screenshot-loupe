@@ -1,0 +1,2 @@
+# Keep the tree LF in the repository; Windows checkouts stay usable either way.
+* text=auto eol=lf
