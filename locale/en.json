@@ -1,0 +1,7 @@
+{
+  "meta": {
+    "title": "Screenshot to composer",
+    "description": "Snips the screen the way a chat app does: the camera button freezes the desktop, an overlay covers it, and the area you drag is attached to the message. The + menu offers the whole screen and leaving this window out of the shot.",
+    "detail": "docs/DETAIL.md"
+  }
+}

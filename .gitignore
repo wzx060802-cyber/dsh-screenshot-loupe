@@ -1,0 +1,12 @@
+# Dependencies
+node_modules/
+
+# Logs and editor noise
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+
+# Local scratch
+.tmp/
+*.local.*
