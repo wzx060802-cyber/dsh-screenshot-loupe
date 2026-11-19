@@ -24,7 +24,8 @@ message is sent, and is sent with that message.
 
 The Host freezes the current screen and draws a full-screen overlay over it:
 
-- **drag** a rectangle and **release** — that rectangle is taken;
+- **drag** a rectangle and **release** — the rectangle stays, and an annotation
+  toolbar appears under it;
 - **Esc** or a **right click** — cancel, nothing is attached;
 - a drag smaller than 6 × 6 pixels is ignored instead of producing a sliver.
 
@@ -35,9 +36,26 @@ coordinates in a label under it. During the drag the same magnifier follows the
 corner being placed, so the edge can be set on the exact pixel.
 
 The selection is drawn as a bright cut-out in the dimmed frame, edged with a
-white hairline under a 1 px brand line, with its size in pixels in a rounded
-label above it. The chosen rectangle is cropped from the captured frame itself,
-so the file matches what the overlay showed, pixel for pixel.
+white hairline under a 1 px brand line. The chosen rectangle is cropped from the
+captured frame itself, so the file matches what the overlay showed, pixel for
+pixel.
+
+### Annotating the selection
+
+Once the rectangle is released, the toolbar under it offers:
+
+| Tool | Use |
+|---|---|
+| Arrow (`A`) | Drag from tail to head; the head is filled and outlined so it reads on any background |
+| Box (`R`) | Drag to frame a region with a 3 px brand outline |
+| Text (`T`) | Click inside, type, `Enter` commits; the label is drawn white with a dark outline so it stays readable |
+| Mosaic (`M`) | Drag to pixelate a region — useful for names, tokens, and phone numbers |
+| Undo (`Ctrl+Z`) | Drops the last mark |
+| Cancel / Confirm | Same as `Esc` / `Enter`; a double click inside the selection also confirms |
+
+Marks are vector at draw time and baked into the cropped PNG at native
+resolution when the selection is confirmed, so nothing is lost to the overlay's
+own scaling.
 
 Because the overlay works on a frozen frame of the real screen, the selection is
 pixel-exact, spans every monitor, and never depends on how large the chat window
@@ -68,7 +86,7 @@ implementation.
 
 Capture tooling by platform:
 
-| Platform | Full screen | Area |
+| Platform | Full screen | Area (and annotation) |
 |---|---|---|
 | Windows | PowerShell + .NET drawing stack, DPI-aware, whole virtual screen | the plugin's own snip overlay (compiled once and cached) |
 | macOS | `screencapture -x` | `screencapture -i` |
@@ -91,13 +109,14 @@ of several.
 
 - Capture happens on the **Host machine**, which is the computer running DeepSeek
   Harness. A Web page opened on another device captures the Host's screen.
-- Leaving the window out is Windows-only; macOS and Linux keep the window in the
-  shot.
+- Leaving the window out and annotating inside the selection are Windows-only;
+  macOS and Linux keep the window in the shot and return the system tool's
+  finished crop.
 - On macOS the first capture needs Screen Recording permission for the DeepSeek
   Harness app; macOS asks once, and until it is granted the capture fails with a
   notice.
 - On Linux an area capture needs one of the four listed tools installed.
-- There is no annotation, no scrolling capture, and no window picker: a capture
+- There is no scrolling capture and no window picker: a capture
   is one frame of the screen, cropped to the chosen rectangle.
 - The route is a plain same-origin GET with no extra credential: it is served
   only on the loopback address the Web GUI already listens on, so it adds no

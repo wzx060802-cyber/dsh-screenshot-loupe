@@ -28,6 +28,9 @@ import { fileURLToPath } from 'node:url'
 /** Route the Client half fetches; a plain GET, same origin as the page. */
 const CAPTURE_PATH = '/dsh-screenshot-loupe/screen.png'
 
+/** Route the Client half reads once to learn what this platform can do. */
+const PROBE_PATH = '/dsh-screenshot-loupe/probe'
+
 /** Window-title suffix of this application; the windows `hide=1` takes out. */
 const APP_WINDOW_TITLE = 'DeepSeek Harness'
 
@@ -108,11 +111,11 @@ const SCRIPT_TEXT = [
   '  $frame = [DshScreenSnip]::Grab($bounds)',
   '  try {',
   '    if ($Region) {',
-  '      $area = New-Object System.Drawing.Rectangle',
-  '      if ([DshScreenSnip]::PickArea($frame, $bounds, $Hint, [ref]$area)) {',
-  '        $cut = $frame.Clone($area, $frame.PixelFormat)',
-  '        try { $cut.Save($OutPath, [System.Drawing.Imaging.ImageFormat]::Png) }',
-  '        finally { $cut.Dispose() }',
+  '      $confirmed = $false',
+  '      $shot = [DshScreenSnip]::PickArea($frame, $bounds, $Hint, [ref]$confirmed)',
+  '      if ($confirmed -and $shot -ne $null) {',
+  '        try { $shot.Save($OutPath, [System.Drawing.Imaging.ImageFormat]::Png) }',
+  '        finally { $shot.Dispose() }',
   '        $outcome = "ok"',
   '      }',
   '    }',
@@ -362,6 +365,35 @@ async function handleCapture (req, res) {
   }
 }
 
+/**
+ * What this platform can do, so the page hides controls it cannot honour.
+ * @param req - request of the probe route.
+ * @param res - response of the probe route.
+ */
+function handleProbe (req, res) {
+  if (req.method !== 'GET') {
+    res.writeHead(405, { allow: 'GET' })
+    res.end()
+    return
+  }
+  const body = JSON.stringify({
+    platform: process.platform,
+    // Every platform has an area path: the overlay on Windows, the system's
+    // own interactive tool elsewhere.
+    region: true,
+    // Only the Windows overlay annotates before the crop is taken.
+    annotate: process.platform === 'win32',
+    // Only Windows can take its own windows out of the grab.
+    hideWindow: process.platform === 'win32',
+  })
+  res.writeHead(200, {
+    'content-type': 'application/json; charset=utf-8',
+    'content-length': String(Buffer.byteLength(body)),
+    'cache-control': 'no-store',
+  })
+  res.end(body)
+}
+
 /** Services this plugin needs to contribute the capture route. */
 export const inject = ['webServer']
 
@@ -377,5 +409,10 @@ export function apply (ctx) {
       path: CAPTURE_PATH,
       handler: handleCapture,
     }), 'dsh-screenshot-loupe: capture route')
+    scope.effect(() => scope.webServer.register({
+      kind: 'exact',
+      path: PROBE_PATH,
+      handler: handleProbe,
+    }), 'dsh-screenshot-loupe: probe route')
   })
 }

@@ -18,6 +18,8 @@ window.__ModuleLoader__.load({
 
     /** Host route serving one freshly captured PNG. */
     const CAPTURE_ENDPOINT = '/dsh-screenshot-loupe/screen.png'
+    /** Host route reporting what this platform can do. */
+    const PROBE_ENDPOINT = '/dsh-screenshot-loupe/probe'
     /** Locale namespace of this plugin's own strings. */
     const NS = 'screenshotAttach'
     /** Class prefix; every rule in STYLE_TEXT is scoped by it. */
@@ -158,7 +160,8 @@ window.__ModuleLoader__.load({
         'notice.noComposer': 'no message editor is available',
         'notice.refused': 'the message editor cannot take an image right now',
         'notice.badResponse': 'no screenshot was captured (status {status})',
-        'overlay.hint': 'Drag to select, release to take it · Esc cancels',
+        'overlay.hint': 'Drag to snip, annotate inside, Enter to finish · Esc cancels',
+        'overlay.hintPlain': 'Drag to snip · Esc cancels',
       },
       zh: {
         'command.label': '截屏',
@@ -173,7 +176,8 @@ window.__ModuleLoader__.load({
         'notice.noComposer': '没有可用的输入框',
         'notice.refused': '输入框当前无法接收图片',
         'notice.badResponse': '没有取到截图（状态 {status}）',
-        'overlay.hint': '拖拽选区，松手截取 · Esc 取消',
+        'overlay.hint': '拖拽框选，框内可标注 · 回车完成 · Esc 取消',
+        'overlay.hintPlain': '拖拽框选 · Esc 取消',
       },
     }
 
@@ -216,6 +220,8 @@ window.__ModuleLoader__.load({
     const noticeStore = createStore(null)
     /** Chooser state: open flag and the remembered "hide this window" choice. */
     const panelStore = createStore({ open: false, hideWindow: true })
+    /** What the Host can do on this platform; read once when the plugin loads. */
+    const capsStore = createStore({ annotate: true, hideWindow: true, region: true })
     /** Capture in flight; the toolbar button and the chooser show progress from it. */
     const busyStore = createStore(false)
     /** Shared in-flight capture chain, so the entry points never double up. */
@@ -370,6 +376,23 @@ window.__ModuleLoader__.load({
         const t = ctx.locale.bind(NS)
         panelStore.set({ open: false, hideWindow: readHideWindow() })
 
+        // Ask once what this platform can do: the chooser hides what it cannot
+        // honour, and the overlay hint drops the annotation part elsewhere.
+        void (async () => {
+          try {
+            const response = await fetch(PROBE_ENDPOINT, { cache: 'no-store', credentials: 'same-origin' })
+            if (!response.ok) return
+            const data = await response.json()
+            capsStore.set({
+              annotate: data.annotate === true,
+              hideWindow: data.hideWindow === true,
+              region: data.region !== false,
+            })
+          } catch {
+            // Keep the Windows-shaped defaults when the probe cannot be read.
+          }
+        })()
+
         /** Report one failure in the composer's own notice. */
         function reportFailure(error) {
           const reason = error instanceof Error ? error.message : String(error)
@@ -413,7 +436,7 @@ window.__ModuleLoader__.load({
           const hide = readHideWindow() ? '1' : '0'
           // The overlay shows exactly one line of its own; the copy lives here
           // so it follows the active locale.
-          const hint = encodeURIComponent(t('overlay.hint'))
+          const hint = encodeURIComponent(capsStore.get().annotate ? t('overlay.hint') : t('overlay.hintPlain'))
           const response = await fetch(
             `${CAPTURE_ENDPOINT}?mode=${mode}&hide=${hide}&hint=${hint}`,
             { cache: 'no-store', credentials: 'same-origin' },
@@ -482,6 +505,7 @@ window.__ModuleLoader__.load({
         function CapturePanel() {
           const state = useStore(panelStore)
           const busy = useStore(busyStore)
+          const caps = useStore(capsStore)
           const hostRef = React.useRef(null)
           const [, force] = React.useReducer(count => count + 1, 0)
           React.useEffect(() => ctx.locale.subscribe(() => { force() }), [])
@@ -525,7 +549,7 @@ window.__ModuleLoader__.load({
               disabled: busy,
               onClick: () => { void startCapture('full') },
             }, h(CameraIcon, { size: 14 }), h('span', null, t('panel.full'))),
-            h('label', { className: CLASS + '-panel-check' },
+            caps.hideWindow ? h('label', { className: CLASS + '-panel-check' },
               h('input', {
                 type: 'checkbox',
                 checked: state.hideWindow,
@@ -534,7 +558,7 @@ window.__ModuleLoader__.load({
                   panelStore.set({ ...panelStore.get(), hideWindow: event.target.checked })
                 },
               }),
-              h('span', null, t('panel.hide'))))
+              h('span', null, t('panel.hide'))) : null)
         }
 
         function Notice() {

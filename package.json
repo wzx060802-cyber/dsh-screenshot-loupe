@@ -1,8 +1,8 @@
 {
   "name": "dsh-screenshot-loupe",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
-  "description": "On-screen area snip for the DeepSeek Harness composer, with a pixel loupe and crosshair guides. No runtime dependency beyond what Windows already ships.",
+  "description": "On-screen area snip for the DeepSeek Harness composer, with a pixel loupe, crosshair guides, and in-place annotation. No runtime dependency beyond what Windows already ships.",
   "license": "MIT",
   "keywords": [
     "deepseek-harness",
@@ -10,7 +10,8 @@
     "dsh-plugin",
     "screenshot",
     "snip",
-    "loupe"
+    "loupe",
+    "annotate"
   ],
   "repository": {
     "type": "git",
@@ -20,6 +21,9 @@
     "url": "https://github.com/wzx060802-cyber/dsh-screenshot-loupe/issues"
   },
   "homepage": "https://github.com/wzx060802-cyber/dsh-screenshot-loupe#readme",
+  "scripts": {
+    "check": "node --check index.js && node --check client.js"
+  },
   "exports": {
     ".": "./index.js",
     "./client": "./client.js",
